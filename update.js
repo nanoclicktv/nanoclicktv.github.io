@@ -3,8 +3,8 @@ const path = require('path');
 
 const VK_CHANNEL_URL = 'https://live.vkvideo.ru/disney';
 
-// Стабильная внешняя HLS-заглушка (.m3u8) для оффлайн режима
-const OFFLINE_HLS_STREAM = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+// Прямая ссылка на ваш .ts файл на raw.githubusercontent.com (как у Kinowalk)
+const OFFLINE_TS_URL = 'https://raw.githubusercontent.com/nanoclicktv/nanoclicktv.github.io/main/offline.ts';
 
 const OUTPUT_DIR = path.join(__dirname, 'disney_channel');
 const INDEX_M3U8 = path.join(OUTPUT_DIR, 'index.m3u8');
@@ -20,14 +20,14 @@ async function getVkLiveStream() {
 
     if (response.ok) {
       const html = await response.text();
-      // Ищем .m3u8 в конфигурации VK Video Live
+      // Ищем .m3u8 ссылку в конфигурации VK Video Live
       const match = html.match(/(https?:\\?\/\\?[^"]+?\.m3u8[^"]*)/i);
       if (match) {
         return match[1].replace(/\\/g, '');
       }
     }
   } catch (err) {
-    console.error('Ошибка запроса к VK:', err.message);
+    console.error('Ошибка запроса VK:', err.message);
   }
   return null;
 }
@@ -37,33 +37,29 @@ async function update() {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  const activeVkStream = await getVkLiveStream();
-  
+  const activeStreamUrl = await getVkLiveStream();
   let m3u8Content = '';
 
-  if (activeVkStream) {
-    console.log(' [ONLINE] Трансляция в эфире VK:', activeVkStream);
-    // Для прямого эфира VK передаем ссылку через редирект-манифест
-    m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${activeVkStream}\n`;
+  if (activeStreamUrl) {
+    console.log(' [ONLINE] Трансляция в эфире VK:', activeStreamUrl);
+    m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${activeStreamUrl}\n`;
   } else {
-    console.log(' [OFFLINE] Канал оффлайн. Подключаем HLS-заглушку.');
+    console.log(' [OFFLINE] Канал оффлайн. Подключаем HLS-заглушку Kinowalk.');
     
-    // Если на сервере есть ваша локальная нарезка в disney_channel/hls/playlist.m3u8:
-    const localHlsPath = path.join(OUTPUT_DIR, 'hls', 'playlist.m3u8');
-    
-    if (fs.existsSync(localHlsPath)) {
-      // Подставляем содержимое вашего собственного HLS-плейлиста
-      const localContent = fs.readFileSync(localHlsPath, 'utf8');
-      // Корректируем относительные пути к .ts сегментам
-      m3u8Content = localContent.replace(/(segment_\d+\.ts)/g, 'hls/$1');
-    } else {
-      // Если локальной нарезки нет — берем внешнюю заведомо рабочую HLS-заглушку
-      m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${OFFLINE_HLS_STREAM}\n`;
-    }
+    // Формат точь-в-точь как у Kinowalk
+    m3u8Content = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:10
+#EXT-X-MEDIA-SEQUENCE:0
+#EXTINF:10.0,
+${OFFLINE_TS_URL}
+#EXTINF:10.0,
+${OFFLINE_TS_URL}
+`;
   }
 
   fs.writeFileSync(INDEX_M3U8, m3u8Content, 'utf8');
-  console.log(' [DONE] Файл index.m3u8 успешно записан!');
+  console.log(' [DONE] Файл index.m3u8 обновлен.');
 }
 
 update();
