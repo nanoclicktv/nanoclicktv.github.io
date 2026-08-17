@@ -3,7 +3,7 @@ const path = require('path');
 
 const VK_CHANNEL_URL = 'https://live.vkvideo.ru/disney';
 
-// Прямая ссылка на ваш .ts файл на raw.githubusercontent.com (как у Kinowalk)
+// Прямая ссылка на файл offline.ts в вашем репозитории через raw.githubusercontent.com
 const OFFLINE_TS_URL = 'https://raw.githubusercontent.com/nanoclicktv/nanoclicktv.github.io/main/offline.ts';
 
 const OUTPUT_DIR = path.join(__dirname, 'disney_channel');
@@ -20,7 +20,6 @@ async function getVkLiveStream() {
 
     if (response.ok) {
       const html = await response.text();
-      // Ищем .m3u8 ссылку в конфигурации VK Video Live
       const match = html.match(/(https?:\\?\/\\?[^"]+?\.m3u8[^"]*)/i);
       if (match) {
         return match[1].replace(/\\/g, '');
@@ -44,9 +43,9 @@ async function update() {
     console.log(' [ONLINE] Трансляция в эфире VK:', activeStreamUrl);
     m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${activeStreamUrl}\n`;
   } else {
-    console.log(' [OFFLINE] Канал оффлайн. Подключаем HLS-заглушку Kinowalk.');
+    console.log(' [OFFLINE] Канал оффлайн. Использование raw-заглушки Kinowalk.');
     
-    // Формат точь-в-точь как у Kinowalk
+    // Структура HLS-заглушки точь-в-точь как у Kinowalk
     m3u8Content = `#EXTM3U
 #EXT-X-VERSION:3
 #EXT-X-TARGETDURATION:10
@@ -59,7 +58,7 @@ ${OFFLINE_TS_URL}
   }
 
   fs.writeFileSync(INDEX_M3U8, m3u8Content, 'utf8');
-  console.log(' [DONE] Файл index.m3u8 обновлен.');
+  console.log(' [DONE] Файл disney_channel/index.m3u8 успешно обновлен.');
 }
 
 update();
