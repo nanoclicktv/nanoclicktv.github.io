@@ -1,17 +1,16 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-// Ссылка на канал VK Video Live и видео-заглушку
 const VK_CHANNEL_URL = 'https://live.vkvideo.ru/disney';
-const OFFLINE_URL = 'https://nanoclicktv.github.io/offline.mp4';
-
-// Папка и итоговый файл m3u8
+const OFFLINE_MP4 = path.join(__dirname, 'offline.mp4');
 const OUTPUT_DIR = path.join(__dirname, 'disney_channel');
-const OUTPUT_FILE = path.join(OUTPUT_DIR, 'index.m3u8');
+const HLS_DIR = path.join(OUTPUT_DIR, 'hls');
+const INDEX_M3U8 = path.join(OUTPUT_DIR, 'index.m3u8');
+const HLS_PLAYLIST = path.join(HLS_DIR, 'playlist.m3u8');
 
-async function updateStream() {
-  let targetUrl = OFFLINE_URL;
-
+// Получение прямой ссылки на VK Live
+async function getVkLiveStream() {
   try {
     const response = await fetch(VK_CHANNEL_URL, {
       headers: {
@@ -22,32 +21,68 @@ async function updateStream() {
 
     if (response.ok) {
       const html = await response.text();
-      
-      // Ищем .m3u8 ссылку в коде VK
       const match = html.match(/(https?:\\?\/\\?[^"]+?\.m3u8[^"]*)/i);
-
       if (match) {
-        targetUrl = match[1].replace(/\\/g, '');
-        console.log(' [OK] Активный поток VK Live найден!');
-      } else {
-        console.log(' [OFFLINE] Трансляция не идет. Подключаем заглушку.');
+        return match[1].replace(/\\/g, '');
       }
-    } else {
-      console.log(` [ERROR] Ошибка ответа VK: ${response.status}`);
     }
   } catch (err) {
-    console.error(' [ERROR] Ошибка при парсинге:', err.message);
+    console.error(' Ошибка запроса VK:', err.message);
+  }
+  return null;
+}
+
+// Проверка и разовое создание HLS нарезки (.ts)
+function ensureHlsOfflineExists() {
+  if (!fs.existsSync(HLS_DIR)) {
+    fs.mkdirSync(HLS_DIR, { recursive: true });
   }
 
-  // Формируем редирект-манифест HLS, понятный для IPTV плееров
-  const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${targetUrl}\n`;
+  // Если готовый плейлист и сегменты уже существуют — ничего не нарезаем
+  if (fs.existsSync(HLS_PLAYLIST)) {
+    console.log(' [CACHE] HLS нарезка уже существует в папке hls, используем её.');
+    return;
+  }
 
+  console.log(' [FFMPEG] Нарезка оффлайн видео в HLS (.ts сегменты)...');
+  
+  if (!fs.existsSync(OFFLINE_MP4)) {
+    console.error(' [ERROR] Файл offline.mp4 не найден в корне!');
+    return;
+  }
+
+  try {
+    // Нарезаем offline.mp4 на .ts файлы по 6 секунд
+    const ffmpegCmd = `ffmpeg -i "${OFFLINE_MP4}" -c:v copy -c:a copy -hls_time 6 -hls_list_size 0 -hls_segment_filename "${path.join(HLS_DIR, 'segment_%03d.ts')}" "${HLS_PLAYLIST}"`;
+    execSync(ffmpegCmd, { stdio: 'inherit' });
+    console.log(' [OK] HLS сегменты успешно созданы!');
+  } catch (e) {
+    console.error(' [ERROR] Ошибка выполнения FFmpeg:', e.message);
+  }
+}
+
+async function update() {
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  fs.writeFileSync(OUTPUT_FILE, m3u8Content, 'utf8');
-  console.log(` [DONE] Файл сохранен в ${OUTPUT_FILE}`);
+  const activeStreamUrl = await getVkLiveStream();
+  let targetM3u8Url = '';
+
+  if (activeStreamUrl) {
+    console.log(' [ONLINE] Трансляция в эфире:', activeStreamUrl);
+    targetM3u8Url = activeStreamUrl;
+  } else {
+    console.log(' [OFFLINE] Трансляция завершена.');
+    ensureHlsOfflineExists();
+    // Относительный путь к нашему HLS-плейлисту в GitHub Pages
+    targetM3u8Url = 'hls/playlist.m3u8';
+  }
+
+  // Записываем файл index.m3u8
+  const indexContent = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\n${targetM3u8Url}\n`;
+  fs.writeFileSync(INDEX_M3U8, indexContent, 'utf8');
+  console.log(' [DONE] index.m3u8 сохранен.');
 }
 
-updateStream();
+update();
