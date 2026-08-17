@@ -2,8 +2,9 @@ name: Update VK Live Streams
 
 on:
   schedule:
+    # Автозапуск каждые 10 минут
     - cron: '*/10 * * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Кнопка для ручного запуска во вкладке Actions
 
 permissions:
   contents: write
@@ -21,13 +22,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Запуск скрипта обновления и генерации HLS
+      - name: Запуск скрипта обновления
         run: node update.js
 
-      - name: Сохранение результатов и HLS сегментов в Git
+      - name: Коммит и push обновленного index.m3u8
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add disney_channel/
-          git commit -m "Auto-update Disney stream & HLS segments" || exit 0
+          git add disney_channel/index.m3u8
+          git commit -m "Auto-update Disney Channel stream link" || exit 0
           git push
