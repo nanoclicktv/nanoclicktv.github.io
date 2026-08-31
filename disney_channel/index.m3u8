@@ -1,4 +1,4 @@
 #EXTM3U
 #EXT-X-VERSION:3
 #EXT-X-STREAM-INF:BANDWIDTH=2000000
-https://vsd130.okcdn.ru/cmaf/17601886554670/sig/lurQoY1U9gA/expires/1788240106977/srcIp/52.161.59.144/urls/176.112.172.106/clientType/36/srcAg/CHROME/mid/15870746380078/get/hls_15870746380078.Dni3QP2tHig.m3u8
+https://vsd161.okcdn.ru/hls/17601886554670_offset_p.m3u8/sig/aa6xG3Rl6AM/expires/1788241062569/srcIp/20.169.72.1/urls/95.163.35.76/clientType/36/srcAg/CHROME/mid/15870746380078/video.m3u8?p
