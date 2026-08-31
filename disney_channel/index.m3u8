@@ -1,8 +1,4 @@
 #EXTM3U
 #EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:10
-#EXT-X-MEDIA-SEQUENCE:0
-#EXTINF:10.0,
-https://raw.githubusercontent.com/nanoclicktv/nanoclicktv.github.io/main/offline.ts
-#EXTINF:10.0,
-https://raw.githubusercontent.com/nanoclicktv/nanoclicktv.github.io/main/offline.ts
+#EXT-X-STREAM-INF:BANDWIDTH=2000000
+https://vsd161.okcdn.ru/hls/17601886554670_offset_p.m3u8/sig/0yKsk6MIGX4/expires/1788244192792/srcIp/52.159.247.160/urls/95.163.35.76/clientType/36/srcAg/CHROME/mid/15870746380078/video.m3u8?p
